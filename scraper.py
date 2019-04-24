@@ -8,47 +8,45 @@ def parse_html(url, **kwargs):
 
     response = requests.get(url)
     html = response.content
-    soup = BeautifulSoup(html, features="html.parser")
+    html = BeautifulSoup(html, features="html.parser")
 
-    return soup
+    return html
 
-data = parse_html('https://app.uff.br/graduacao/quadrodehorarios/')
-disci_select = data.find('select', {'id': 'iddepartamento_coordenacao'})
+html = parse_html('https://app.uff.br/graduacao/quadrodehorarios/')
+dept_select = html.find('select', {'id': 'iddepartamento_coordenacao'})
+dept_option = dept_select.find_all('option')
 
-disci_list = disci_select.find_all('option')
+dept_kws = ['codigo', 'nome', 'disciplinas']
+depts = []
 
-keys = ['codigo', 'nome', 'disciplinas']
+lect_kws = ['codigo', 'nome', 'turma', 'modulo', 'segunda', 'terca', 'quarta', 'quinta', 'sexta']
 
-departamentos = []
+for item in dept_option:
+    html = parse_html('https://app.uff.br/graduacao/quadrodehorarios/?utf8=✓&page=0&q[anosemestre_eq]={ano_semestre}&q[disciplina_cod_departamento_eq]={departamento}',
+                      ano_semestre = '20191', departamento = item.get('value'))
+    table = html.find('tbody')
 
-for disci in disci_list:
-    data = dict.fromkeys(keys)
-    data['codigo'] = disci.get('value')
-    data['nome'] = disci.text
-    departamentos.append(data)
+    if not table:
+        continue
 
-api = json.dumps(departamentos, indent=4)
+    dept = dict.fromkeys(dept_kws)
+    dept['codigo'] = item.get('value')
+    dept['nome'] = item.text
 
-print(api)
+    lects = []
 
-options = {
-    'ano_semestre': '20191',
-    'departamento': 'd-98'
-}
+    for row in table.find_all('tr'):
+        lect = dict.fromkeys(lect_kws)
+        for index, column in zip(range(9), row.find_all('td')):
+            lect[lect_kws[index]] = column.text.strip('\n')
+        lects.append(lect)
 
-data = parse_html('https://app.uff.br/graduacao/quadrodehorarios/?utf8=✓&page=0&q[anosemestre_eq]={ano_semestre}&q[disciplina_cod_departamento_eq]={departamento}', **options)
-table = data.find('tbody')
+    dept['disciplinas'] = lects
 
-keys = ['codigo', 'nome', 'turma', 'modulo', 'segunda', 'terca', 'quarta', 'quinta', 'sexta']
+    depts.append(dept)
 
-disciplinas = []
+api = json.dumps(depts, indent=4)
 
-for row in table.find_all('tr'):
-    data = dict.fromkeys(keys)
-    for index, column in zip(range(9), row.find_all('td')):
-        data[keys[index]] = column.text.strip('\n')
-    disciplinas.append(data)
-
-api = json.dumps(disciplinas, indent=4)
-
-print(api)
+file = open('uff_api.json', 'w')
+file.write(api)
+file.close()
