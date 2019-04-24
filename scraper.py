@@ -12,15 +12,34 @@ def parse_html(url, **kwargs):
 
     return soup
 
+data = parse_html('https://app.uff.br/graduacao/quadrodehorarios/')
+disci_select = data.find('select', {'id': 'iddepartamento_coordenacao'})
+
+disci_list = disci_select.find_all('option')
+
+keys = ['codigo', 'nome', 'disciplinas']
+
+departamentos = []
+
+for disci in disci_list:
+    data = dict.fromkeys(keys)
+    data['codigo'] = disci.get('value')
+    data['nome'] = disci.text
+    departamentos.append(data)
+
+api = json.dumps(departamentos, indent=4)
+
+print(api)
+
 options = {
     'ano_semestre': '20191',
     'departamento': 'd-98'
 }
 
-teste = parse_html('https://app.uff.br/graduacao/quadrodehorarios/?utf8=✓&page=0&q[anosemestre_eq]={ano_semestre}&q[disciplina_cod_departamento_eq]={departamento}', **options)
-table = teste.find('tbody')
+data = parse_html('https://app.uff.br/graduacao/quadrodehorarios/?utf8=✓&page=0&q[anosemestre_eq]={ano_semestre}&q[disciplina_cod_departamento_eq]={departamento}', **options)
+table = data.find('tbody')
 
-keys = ['codigo', 'disciplina', 'turma', 'modulo', 'segunda', 'terca', 'quarta', 'quinta', 'sexta']
+keys = ['codigo', 'nome', 'turma', 'modulo', 'segunda', 'terca', 'quarta', 'quinta', 'sexta']
 
 disciplinas = []
 
@@ -30,6 +49,6 @@ for row in table.find_all('tr'):
         data[keys[index]] = column.text.strip('\n')
     disciplinas.append(data)
 
-json = json.dumps(disciplinas, indent=4)
+api = json.dumps(disciplinas, indent=4)
 
-print(json)
+print(api)
